@@ -404,6 +404,27 @@ body {
 
 .inline-form { display: inline; }
 
+/* ========== PAGINATION ========== */
+.paginacion {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--gray-200);
+    flex-wrap: wrap;
+}
+
+.pag-actual {
+    pointer-events: none;
+}
+
+.pag-dots {
+    color: var(--gray-400);
+    padding: 0 0.25rem;
+}
+
 .actions {
     display: flex;
     gap: 0.4rem;

@@ -143,24 +143,36 @@ def importar():
 def invitados():
     buscar = request.args.get('buscar', '')
     lote_filtro = request.args.get('lote', '')
+    pagina = request.args.get('pagina', 1, type=int)
+    por_pagina = 50
+
     conn = get_db()
 
     query = 'SELECT * FROM invitados WHERE 1=1'
+    count_query = 'SELECT COUNT(*) FROM invitados WHERE 1=1'
     params = []
 
     if buscar:
         query += ' AND nombre LIKE ?'
+        count_query += ' AND nombre LIKE ?'
         params.append(f'%{buscar}%')
     if lote_filtro:
         query += ' AND lote = ?'
+        count_query += ' AND lote = ?'
         params.append(lote_filtro)
 
-    query += ' ORDER BY id'
-    invitados_list = conn.execute(query, params).fetchall()
+    total = conn.execute(count_query, params).fetchone()[0]
+    total_paginas = max(1, (total + por_pagina - 1) // por_pagina)
+    pagina = max(1, min(pagina, total_paginas))
+    offset = (pagina - 1) * por_pagina
+
+    query += ' ORDER BY id LIMIT ? OFFSET ?'
+    invitados_list = conn.execute(query, params + [por_pagina, offset]).fetchall()
     lotes = conn.execute('SELECT DISTINCT lote FROM invitados WHERE lote != "" ORDER BY lote').fetchall()
     conn.close()
     return render_template('invitados.html', invitados=invitados_list, buscar=buscar,
-                           lote_filtro=lote_filtro, lotes=lotes)
+                           lote_filtro=lote_filtro, lotes=lotes, pagina=pagina,
+                           total_paginas=total_paginas, total=total)
 
 
 @app.route('/invitados/editar/<int:id>', methods=['POST'])

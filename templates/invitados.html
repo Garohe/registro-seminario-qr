@@ -20,13 +20,13 @@
 </div>
 
 <div class="card">
-    <p class="text-muted">{{ invitados|length }} invitados encontrados</p>
+    <p class="text-muted">{{ total }} invitados encontrados — Pagina {{ pagina }} de {{ total_paginas }}</p>
     <div class="table-wrapper">
         <table class="table">
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>Código</th>
+                    <th>Codigo</th>
                     <th>Nombre</th>
                     <th>Lote</th>
                     <th>Asistencia</th>
@@ -57,7 +57,7 @@
                     <td class="actions">
                         <button type="submit" form="form-{{ inv.id }}" class="btn btn-sm btn-primary">Guardar</button>
                         <form method="POST" action="/invitados/eliminar/{{ inv.id }}" class="inline-form"
-                              onsubmit="return confirm('¿Eliminar a {{ inv.nombre }}?')">
+                              onsubmit="return confirm('Eliminar a {{ inv.nombre }}?')">
                             <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
                         </form>
                     </td>
@@ -66,5 +66,27 @@
             </tbody>
         </table>
     </div>
+
+    {% if total_paginas > 1 %}
+    <div class="paginacion">
+        {% if pagina > 1 %}
+        <a href="/invitados?pagina={{ pagina - 1 }}&buscar={{ buscar }}&lote={{ lote_filtro }}" class="btn btn-sm btn-secondary">Anterior</a>
+        {% endif %}
+
+        {% for p in range(1, total_paginas + 1) %}
+            {% if p == pagina %}
+            <span class="btn btn-sm btn-primary pag-actual">{{ p }}</span>
+            {% elif p <= 3 or p > total_paginas - 2 or (p >= pagina - 1 and p <= pagina + 1) %}
+            <a href="/invitados?pagina={{ p }}&buscar={{ buscar }}&lote={{ lote_filtro }}" class="btn btn-sm btn-secondary">{{ p }}</a>
+            {% elif p == 4 or p == total_paginas - 2 %}
+            <span class="pag-dots">...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if pagina < total_paginas %}
+        <a href="/invitados?pagina={{ pagina + 1 }}&buscar={{ buscar }}&lote={{ lote_filtro }}" class="btn btn-sm btn-secondary">Siguiente</a>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
