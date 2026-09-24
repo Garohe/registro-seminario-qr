@@ -28,6 +28,9 @@
                     <th>#</th>
                     <th>Codigo</th>
                     <th>Nombre</th>
+                    {% for col in extra_cols %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
                     <th>Lote</th>
                     <th>Asistencia</th>
                     <th>Acciones</th>
@@ -35,6 +38,7 @@
             </thead>
             <tbody>
                 {% for inv in invitados %}
+                {% set extras = inv.extras|parse_extras %}
                 <tr>
                     <td>{{ inv.id }}</td>
                     <td><code>{{ inv.codigo }}</code></td>
@@ -42,6 +46,9 @@
                         <form method="POST" action="/invitados/editar/{{ inv.id }}" class="inline-form" id="form-{{ inv.id }}">
                             <input type="text" name="nombre" value="{{ inv.nombre }}" class="input input-sm">
                     </td>
+                    {% for col in extra_cols %}
+                    <td>{{ extras.get(col, '') }}</td>
+                    {% endfor %}
                     <td>
                             <input type="text" name="lote" value="{{ inv.lote }}" class="input input-sm input-lote" placeholder="Ej: A">
                         </form>

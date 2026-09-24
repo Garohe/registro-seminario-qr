@@ -1,6 +1,7 @@
 import os
 import csv
 import io
+import json
 import sqlite3
 import uuid
 from datetime import datetime
@@ -46,14 +47,27 @@ def init_db():
             codigo TEXT UNIQUE NOT NULL,
             asistencia INTEGER DEFAULT 0,
             hora_registro TEXT,
-            lote TEXT DEFAULT ''
+            lote TEXT DEFAULT '',
+            extras TEXT DEFAULT '{}'
         )
     ''')
+    try:
+        conn.execute('ALTER TABLE invitados ADD COLUMN extras TEXT DEFAULT "{}"')
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
 
 init_db()
+
+
+@app.template_filter('parse_extras')
+def parse_extras(extras_str):
+    try:
+        return json.loads(extras_str) if extras_str else {}
+    except (json.JSONDecodeError, TypeError):
+        return {}
 
 
 @app.route('/')
@@ -83,7 +97,7 @@ def importar():
         max_code = conn.execute('SELECT MAX(CAST(SUBSTR(codigo, 5) AS INTEGER)) FROM invitados').fetchone()[0]
         counter = (max_code or 0) + 1
 
-        nombres = []
+        registros = []
         filename = archivo.filename.lower()
 
         if filename.endswith('.csv'):
@@ -91,14 +105,21 @@ def importar():
             reader = csv.reader(stream)
             header = next(reader, None)
             if header:
+                header_clean = [col.strip() for col in header]
+                header_lower = [col.lower() for col in header_clean]
                 nombre_idx = 0
-                for i, col in enumerate(header):
-                    if col.strip().lower() == 'nombre':
+                for i, col in enumerate(header_lower):
+                    if col == 'nombre':
                         nombre_idx = i
                         break
+                extra_cols = [(i, header_clean[i]) for i in range(len(header_clean)) if i != nombre_idx and header_clean[i]]
                 for row in reader:
-                    if row and row[nombre_idx].strip():
-                        nombres.append(row[nombre_idx].strip())
+                    if row and len(row) > nombre_idx and row[nombre_idx].strip():
+                        extras = {}
+                        for idx, col_name in extra_cols:
+                            if idx < len(row) and row[idx] and str(row[idx]).strip():
+                                extras[col_name] = str(row[idx]).strip()
+                        registros.append((row[nombre_idx].strip(), extras))
 
         elif filename.endswith('.xlsx') or filename.endswith('.xls'):
             wb = load_workbook(archivo, read_only=True)
@@ -106,25 +127,32 @@ def importar():
             rows = list(ws.iter_rows(values_only=True))
             if rows:
                 header = rows[0]
+                header_clean = [str(col).strip() if col else '' for col in header]
+                header_lower = [col.lower() for col in header_clean]
                 nombre_idx = 0
-                for i, col in enumerate(header):
-                    if col and str(col).strip().lower() == 'nombre':
+                for i, col in enumerate(header_lower):
+                    if col == 'nombre':
                         nombre_idx = i
                         break
+                extra_cols = [(i, header_clean[i]) for i in range(len(header_clean)) if i != nombre_idx and header_clean[i]]
                 for row in rows[1:]:
                     if row[nombre_idx] and str(row[nombre_idx]).strip():
-                        nombres.append(str(row[nombre_idx]).strip())
+                        extras = {}
+                        for idx, col_name in extra_cols:
+                            if idx < len(row) and row[idx] is not None and str(row[idx]).strip():
+                                extras[col_name] = str(row[idx]).strip()
+                        registros.append((str(row[nombre_idx]).strip(), extras))
         else:
             flash('Formato no soportado. Use CSV o Excel (.xlsx)', 'error')
             return redirect(url_for('importar'))
 
         insertados = 0
-        for nombre in nombres:
+        for nombre, extras in registros:
             codigo = f'INV-{counter:04d}'
             try:
                 conn.execute(
-                    'INSERT INTO invitados (nombre, codigo) VALUES (?, ?)',
-                    (nombre, codigo)
+                    'INSERT INTO invitados (nombre, codigo, extras) VALUES (?, ?, ?)',
+                    (nombre, codigo, json.dumps(extras, ensure_ascii=False))
                 )
                 counter += 1
                 insertados += 1
@@ -169,10 +197,21 @@ def invitados():
     query += ' ORDER BY id LIMIT ? OFFSET ?'
     invitados_list = conn.execute(query, params + [por_pagina, offset]).fetchall()
     lotes = conn.execute('SELECT DISTINCT lote FROM invitados WHERE lote != "" ORDER BY lote').fetchall()
+
+    extra_cols_set = set()
+    sample = conn.execute('SELECT extras FROM invitados WHERE extras != "{}" LIMIT 50').fetchall()
+    for row in sample:
+        try:
+            data = json.loads(row['extras'])
+            extra_cols_set.update(data.keys())
+        except (json.JSONDecodeError, TypeError):
+            pass
+    extra_cols = sorted(extra_cols_set)
+
     conn.close()
     return render_template('invitados.html', invitados=invitados_list, buscar=buscar,
                            lote_filtro=lote_filtro, lotes=lotes, pagina=pagina,
-                           total_paginas=total_paginas, total=total)
+                           total_paginas=total_paginas, total=total, extra_cols=extra_cols)
 
 
 @app.route('/invitados/editar/<int:id>', methods=['POST'])
@@ -430,6 +469,16 @@ def api_estadisticas():
 def exportar_excel():
     conn = get_db()
     invitados_list = conn.execute('SELECT * FROM invitados ORDER BY lote, nombre').fetchall()
+
+    extra_cols_set = set()
+    for inv in invitados_list:
+        try:
+            data = json.loads(inv['extras']) if inv['extras'] else {}
+            extra_cols_set.update(data.keys())
+        except (json.JSONDecodeError, TypeError):
+            pass
+    extra_cols = sorted(extra_cols_set)
+
     conn.close()
 
     wb = Workbook()
@@ -450,19 +499,21 @@ def exportar_excel():
     )
     centrado = Alignment(horizontal="center", vertical="center")
 
-    ws.merge_cells('A1:F1')
+    total_cols = 6 + len(extra_cols)
+    end_col_letter = chr(64 + min(total_cols, 26))
+    ws.merge_cells(f'A1:{end_col_letter}1')
     ws['A1'] = "REPORTE DE ASISTENCIA — SEMINARIO 2026"
     ws['A1'].font = Font(name="Calibri", bold=True, size=14, color="2c3e50")
     ws['A1'].alignment = Alignment(horizontal="center")
 
     total = len(invitados_list)
     presentes = sum(1 for i in invitados_list if i['asistencia'] == 1)
-    ws.merge_cells('A2:F2')
+    ws.merge_cells(f'A2:{end_col_letter}2')
     ws['A2'] = f"Total: {total}  |  Presentes: {presentes}  |  Ausentes: {total - presentes}  |  Asistencia: {round(presentes/total*100, 1) if total else 0}%"
     ws['A2'].font = Font(name="Calibri", size=11, color="666666")
     ws['A2'].alignment = Alignment(horizontal="center")
 
-    headers = ["#", "Código", "Nombre", "Lote", "Asistencia", "Hora de Registro"]
+    headers = ["#", "Codigo", "Nombre"] + extra_cols + ["Lote", "Asistencia", "Hora de Registro"]
     for col, h in enumerate(headers, 1):
         cell = ws.cell(row=4, column=col, value=h)
         cell.font = header_font
@@ -472,28 +523,46 @@ def exportar_excel():
 
     for idx, inv in enumerate(invitados_list, 1):
         row = idx + 4
-        ws.cell(row=row, column=1, value=idx).alignment = centrado
-        ws.cell(row=row, column=2, value=inv['codigo']).alignment = centrado
-        ws.cell(row=row, column=3, value=inv['nombre'])
-        ws.cell(row=row, column=4, value=inv['lote'] or "").alignment = centrado
+        col_num = 1
+        ws.cell(row=row, column=col_num, value=idx).alignment = centrado
+        col_num += 1
+        ws.cell(row=row, column=col_num, value=inv['codigo']).alignment = centrado
+        col_num += 1
+        ws.cell(row=row, column=col_num, value=inv['nombre'])
+        col_num += 1
+
+        try:
+            extras = json.loads(inv['extras']) if inv['extras'] else {}
+        except (json.JSONDecodeError, TypeError):
+            extras = {}
+        for ec in extra_cols:
+            ws.cell(row=row, column=col_num, value=extras.get(ec, "")).alignment = centrado
+            col_num += 1
+
+        ws.cell(row=row, column=col_num, value=inv['lote'] or "").alignment = centrado
+        col_num += 1
 
         asistio = inv['asistencia'] == 1
-        cell_asist = ws.cell(row=row, column=5, value="PRESENTE" if asistio else "AUSENTE")
+        cell_asist = ws.cell(row=row, column=col_num, value="PRESENTE" if asistio else "AUSENTE")
         cell_asist.alignment = centrado
         cell_asist.font = verde_texto if asistio else rojo_texto
         cell_asist.fill = verde if asistio else rojo
+        col_num += 1
 
-        ws.cell(row=row, column=6, value=inv['hora_registro'] or "").alignment = centrado
+        ws.cell(row=row, column=col_num, value=inv['hora_registro'] or "").alignment = centrado
 
-        for col in range(1, 7):
-            ws.cell(row=row, column=col).border = borde
+        for c in range(1, total_cols + 1):
+            ws.cell(row=row, column=c).border = borde
 
     ws.column_dimensions['A'].width = 6
     ws.column_dimensions['B'].width = 12
     ws.column_dimensions['C'].width = 35
-    ws.column_dimensions['D'].width = 10
-    ws.column_dimensions['E'].width = 14
-    ws.column_dimensions['F'].width = 22
+    for i, ec in enumerate(extra_cols):
+        ws.column_dimensions[chr(68 + i)].width = 15
+    offset_col = 68 + len(extra_cols)
+    ws.column_dimensions[chr(offset_col)].width = 10
+    ws.column_dimensions[chr(offset_col + 1)].width = 14
+    ws.column_dimensions[chr(offset_col + 2)].width = 22
 
     nombre_archivo = f'asistencia_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
     ruta = os.path.join(CREDENCIALES_DIR, nombre_archivo)
