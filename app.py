@@ -185,6 +185,17 @@ def eliminar_invitado(id):
     return redirect(url_for('invitados'))
 
 
+@app.route('/borrar-todo', methods=['POST'])
+def borrar_todo():
+    conn = get_db()
+    conn.execute('DELETE FROM invitados')
+    conn.execute('DELETE FROM sqlite_sequence WHERE name = "invitados"')
+    conn.commit()
+    conn.close()
+    flash('Se borraron todos los invitados y asistencias', 'success')
+    return redirect(url_for('importar'))
+
+
 @app.route('/credenciales')
 def credenciales():
     conn = get_db()

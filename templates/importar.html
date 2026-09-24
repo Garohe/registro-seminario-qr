@@ -12,10 +12,18 @@
         <div class="form-group">
             <label class="checkbox-label">
                 <input type="checkbox" name="limpiar" value="1">
-                Limpiar lista existente antes de importar
+                Borrar toda la lista anterior y reemplazar con esta nueva
             </label>
         </div>
         <button type="submit" class="btn btn-primary">Importar</button>
+    </form>
+</div>
+
+<div class="card" style="border: 1px solid #e74c3c;">
+    <h3>Borrar todo</h3>
+    <p style="margin-bottom:1rem;color:var(--gray-600);font-size:0.9rem;">Elimina TODOS los invitados y asistencias. Esta accion no se puede deshacer.</p>
+    <form method="POST" action="/borrar-todo" onsubmit="return confirm('SEGURO que quieres borrar TODOS los invitados y asistencias? Esta accion no se puede deshacer.')">
+        <button type="submit" class="btn btn-danger">Borrar toda la lista</button>
     </form>
 </div>
 
@@ -26,11 +34,11 @@
             <tr><th>nombre</th></tr>
         </thead>
         <tbody>
-            <tr><td>Juan Pérez García</td></tr>
-            <tr><td>María López Hernández</td></tr>
-            <tr><td>Carlos Ramírez Soto</td></tr>
+            <tr><td>Juan Perez Garcia</td></tr>
+            <tr><td>Maria Lopez Hernandez</td></tr>
+            <tr><td>Carlos Ramirez Soto</td></tr>
         </tbody>
     </table>
-    <small>Se pueden incluir más columnas, pero "nombre" es la única requerida.</small>
+    <small>Se pueden incluir mas columnas, pero "nombre" es la unica requerida.</small>
 </div>
 {% endblock %}
