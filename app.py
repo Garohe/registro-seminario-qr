@@ -421,13 +421,17 @@ def api_registrar():
     if not data or 'codigo' not in data:
         return jsonify({'status': 'error', 'message': 'Código no proporcionado'}), 400
 
-    codigo = data['codigo'].strip()
+    valor = data['codigo'].strip()
     conn = get_db()
-    inv = conn.execute('SELECT * FROM invitados WHERE codigo = ?', (codigo,)).fetchone()
+    inv = conn.execute('SELECT * FROM invitados WHERE codigo = ?', (valor,)).fetchone()
+    if not inv:
+        inv = conn.execute('SELECT * FROM invitados WHERE UPPER(nombre) = UPPER(?)', (valor,)).fetchone()
+    if not inv:
+        inv = conn.execute('SELECT * FROM invitados WHERE UPPER(nombre) LIKE UPPER(?)', (f'%{valor}%',)).fetchone()
 
     if not inv:
         conn.close()
-        return jsonify({'status': 'error', 'message': 'Código no encontrado'}), 404
+        return jsonify({'status': 'error', 'message': f'No se encontro: {valor}'}), 404
 
     if inv['asistencia'] == 1:
         conn.close()
@@ -440,8 +444,8 @@ def api_registrar():
 
     hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     conn.execute(
-        'UPDATE invitados SET asistencia = 1, hora_registro = ? WHERE codigo = ?',
-        (hora, codigo)
+        'UPDATE invitados SET asistencia = 1, hora_registro = ? WHERE id = ?',
+        (hora, inv['id'])
     )
     conn.commit()
     conn.close()
