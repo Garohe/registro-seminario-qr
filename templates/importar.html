@@ -7,7 +7,7 @@
         <div class="form-group">
             <label>Archivo CSV o Excel (.xlsx)</label>
             <input type="file" name="archivo" accept=".csv,.xlsx,.xls" required class="file-input">
-            <small>El archivo debe tener una columna llamada "nombre"</small>
+            <small>El archivo debe tener una columna de nombre (nombre, nombre completo, etc.)</small>
         </div>
         <div class="form-group">
             <label class="checkbox-label">
@@ -20,17 +20,30 @@
 </div>
 
 <div class="card">
-    <h3>Formato esperado</h3>
-    <table class="table">
-        <thead>
-            <tr><th>nombre</th></tr>
-        </thead>
-        <tbody>
-            <tr><td>Juan Perez Garcia</td></tr>
-            <tr><td>Maria Lopez Hernandez</td></tr>
-            <tr><td>Carlos Ramirez Soto</td></tr>
-        </tbody>
-    </table>
-    <small>Se pueden incluir mas columnas, pero "nombre" es la unica requerida.</small>
+    <h3>Columnas que detecta automaticamente</h3>
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Columna</th>
+                    <th>Para que sirve</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>Nombre completo</code> o <code>Nombre</code></td>
+                    <td>Nombre del invitado (requerido)</td>
+                </tr>
+                <tr>
+                    <td><code>Folio</code> o <code>Codigo</code></td>
+                    <td>Codigo para el QR. Si no existe, se genera automaticamente</td>
+                </tr>
+                <tr>
+                    <td>Cualquier otra columna</td>
+                    <td>Se guarda y se muestra (ej: Cargo, Area, Telefono, etc.)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

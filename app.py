@@ -94,8 +94,49 @@ def importar():
             conn.execute('DELETE FROM invitados')
             conn.commit()
 
-        max_code = conn.execute('SELECT MAX(CAST(SUBSTR(codigo, 5) AS INTEGER)) FROM invitados').fetchone()[0]
-        counter = (max_code or 0) + 1
+        NOMBRE_KEYS = ['nombre', 'nombre completo', 'nombres', 'name']
+        FOLIO_KEYS = ['folio', 'codigo', 'código', 'codigo qr', 'código qr', 'id', 'clave', 'identificador']
+        SKIP_KEYS = ['qr', 'qr / identificador', 'qr/identificador', 'entrada', 'salida', 'observaciones']
+
+        def detect_columns(header_list):
+            header_clean = [str(col).strip() if col else '' for col in header_list]
+            header_lower = [col.lower() for col in header_clean]
+            nombre_idx = None
+            folio_idx = None
+            for i, col in enumerate(header_lower):
+                if col in NOMBRE_KEYS and nombre_idx is None:
+                    nombre_idx = i
+                if col in FOLIO_KEYS and folio_idx is None:
+                    folio_idx = i
+            if nombre_idx is None:
+                for i, col in enumerate(header_lower):
+                    if 'nombre' in col:
+                        nombre_idx = i
+                        break
+            if nombre_idx is None:
+                nombre_idx = 1 if len(header_clean) > 1 else 0
+            skip = {nombre_idx}
+            if folio_idx is not None:
+                skip.add(folio_idx)
+            extra_cols = []
+            for i, col in enumerate(header_clean):
+                if i not in skip and col and col.lower() not in SKIP_KEYS:
+                    extra_cols.append((i, col))
+            return nombre_idx, folio_idx, extra_cols, header_clean
+
+        def parse_row(row, nombre_idx, folio_idx, extra_cols):
+            nombre_val = row[nombre_idx] if nombre_idx < len(row) else None
+            if not nombre_val or not str(nombre_val).strip():
+                return None
+            nombre = str(nombre_val).strip()
+            codigo = None
+            if folio_idx is not None and folio_idx < len(row) and row[folio_idx]:
+                codigo = str(row[folio_idx]).strip()
+            extras = {}
+            for idx, col_name in extra_cols:
+                if idx < len(row) and row[idx] is not None and str(row[idx]).strip():
+                    extras[col_name] = str(row[idx]).strip()
+            return nombre, codigo, extras
 
         registros = []
         filename = archivo.filename.lower()
@@ -105,56 +146,40 @@ def importar():
             reader = csv.reader(stream)
             header = next(reader, None)
             if header:
-                header_clean = [col.strip() for col in header]
-                header_lower = [col.lower() for col in header_clean]
-                nombre_idx = 0
-                for i, col in enumerate(header_lower):
-                    if col == 'nombre':
-                        nombre_idx = i
-                        break
-                extra_cols = [(i, header_clean[i]) for i in range(len(header_clean)) if i != nombre_idx and header_clean[i]]
+                nombre_idx, folio_idx, extra_cols, _ = detect_columns(header)
                 for row in reader:
-                    if row and len(row) > nombre_idx and row[nombre_idx].strip():
-                        extras = {}
-                        for idx, col_name in extra_cols:
-                            if idx < len(row) and row[idx] and str(row[idx]).strip():
-                                extras[col_name] = str(row[idx]).strip()
-                        registros.append((row[nombre_idx].strip(), extras))
+                    if row:
+                        parsed = parse_row(row, nombre_idx, folio_idx, extra_cols)
+                        if parsed:
+                            registros.append(parsed)
 
         elif filename.endswith('.xlsx') or filename.endswith('.xls'):
             wb = load_workbook(archivo, read_only=True)
             ws = wb.active
             rows = list(ws.iter_rows(values_only=True))
             if rows:
-                header = rows[0]
-                header_clean = [str(col).strip() if col else '' for col in header]
-                header_lower = [col.lower() for col in header_clean]
-                nombre_idx = 0
-                for i, col in enumerate(header_lower):
-                    if col == 'nombre':
-                        nombre_idx = i
-                        break
-                extra_cols = [(i, header_clean[i]) for i in range(len(header_clean)) if i != nombre_idx and header_clean[i]]
+                nombre_idx, folio_idx, extra_cols, _ = detect_columns(rows[0])
                 for row in rows[1:]:
-                    if row[nombre_idx] and str(row[nombre_idx]).strip():
-                        extras = {}
-                        for idx, col_name in extra_cols:
-                            if idx < len(row) and row[idx] is not None and str(row[idx]).strip():
-                                extras[col_name] = str(row[idx]).strip()
-                        registros.append((str(row[nombre_idx]).strip(), extras))
+                    parsed = parse_row(row, nombre_idx, folio_idx, extra_cols)
+                    if parsed:
+                        registros.append(parsed)
         else:
             flash('Formato no soportado. Use CSV o Excel (.xlsx)', 'error')
             return redirect(url_for('importar'))
 
+        max_code = conn.execute('SELECT MAX(CAST(SUBSTR(codigo, 5) AS INTEGER)) FROM invitados WHERE codigo LIKE "INV-%"').fetchone()[0]
+        counter = (max_code or 0) + 1
+
         insertados = 0
-        for nombre, extras in registros:
-            codigo = f'INV-{counter:04d}'
+        for nombre, codigo_orig, extras in registros:
+            codigo = codigo_orig if codigo_orig else f'INV-{counter:04d}'
             try:
                 conn.execute(
                     'INSERT INTO invitados (nombre, codigo, extras) VALUES (?, ?, ?)',
                     (nombre, codigo, json.dumps(extras, ensure_ascii=False))
                 )
-                counter += 1
+                if not codigo_orig:
+                    counter += 1
                 insertados += 1
             except sqlite3.IntegrityError:
                 pass
