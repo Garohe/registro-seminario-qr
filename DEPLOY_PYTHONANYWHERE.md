@@ -1,43 +1,34 @@
-# Deploy en PythonAnywhere - Paso a Paso
+# Deploy en PythonAnywhere
 
 ## 1. Crear cuenta
 - Ve a https://www.pythonanywhere.com
-- Crea una cuenta GRATUITA (Beginner)
+- Crea cuenta GRATUITA (Beginner)
 - Tu URL sera: `tu-usuario.pythonanywhere.com`
 
-## 2. Subir archivos
-- En el dashboard, ve a **Files**
-- Crea una carpeta: `/home/tu-usuario/registros`
-- Sube TODOS estos archivos dentro de esa carpeta:
-  - `app.py`
-  - `wsgi.py`
-  - `requirements.txt`
-  - `ejemplo_invitados.csv`
-  - Carpeta `templates/` (con todos los .html)
-  - Carpeta `static/` (con style.css y scanner.js)
-  - `database.db` (si ya tiene datos cargados)
+## 2. Desde la consola Bash (4 comandos)
+Ve a **Consoles** > **Bash** y ejecuta:
 
-## 3. Instalar dependencias
-- Ve a **Consoles** > **Bash console**
-- Ejecuta:
-```
+```bash
+cd ~
+git clone https://github.com/Garohe/registro-seminario-qr.git registros
+cd registros
 pip3 install --user flask openpyxl qrcode reportlab Pillow
 ```
 
-## 4. Configurar la Web App
-- Ve a **Web** > **Add a new web app**
-- Selecciona **Manual configuration**
-- Selecciona **Python 3.10** (o la mas reciente)
-- En la configuracion:
+Listo, el codigo ya esta.
 
-### Source code:
+## 3. Configurar la Web App
+- Ve a **Web** > **Add a new web app**
+- Click **Next** > **Manual configuration** > **Python 3.10**
+
+### En la pagina de configuracion:
+
+**Source code:**
 ```
 /home/tu-usuario/registros
 ```
 
-### WSGI configuration file:
-- Click en el link del archivo WSGI
-- BORRA todo el contenido y pon:
+**WSGI configuration file** (click en el link, borra todo y pon esto):
 ```python
 import sys
 import os
@@ -48,29 +39,39 @@ if project_home not in sys.path:
 
 from app import app as application
 ```
-- Guarda el archivo
 
-### Static files:
+**Static files** (en la seccion de abajo):
 | URL | Directory |
 |---|---|
-| /static/ | /home/tu-usuario/registros/static |
+| `/static/` | `/home/tu-usuario/registros/static` |
 
-## 5. Recargar
-- Click en **Reload** (boton verde grande)
-- Abre `tu-usuario.pythonanywhere.com` en el navegador
+## 4. Reload
+- Click en el boton verde **Reload**
+- Abre `tu-usuario.pythonanywhere.com`
 
-## 6. Cargar invitados
+## 5. Cargar invitados
 - Ve a `tu-usuario.pythonanywhere.com/importar`
 - Sube el CSV con los 500 nombres
 
-## Listo!
-Comparte la URL con los encargados del evento:
-- Escanear: `tu-usuario.pythonanywhere.com/escanear`
-- Dashboard: `tu-usuario.pythonanywhere.com/dashboard`
+---
 
-## Notas
-- La cuenta gratuita permite 1 web app
-- NO se duerme (a diferencia de Render)
-- Si necesitas reiniciar: ve a Web > Reload
-- Los archivos y la BD persisten
-- Reemplaza `tu-usuario` por tu nombre de usuario de PythonAnywhere
+## URLs para compartir el dia del evento
+
+| Que | URL |
+|---|---|
+| Escanear QR | `tu-usuario.pythonanywhere.com/escanear` |
+| Dashboard | `tu-usuario.pythonanywhere.com/dashboard` |
+| Exportar Excel | `tu-usuario.pythonanywhere.com/exportar` |
+
+## Si necesitas actualizar el codigo
+Desde la consola Bash:
+```bash
+cd ~/registros
+git pull
+```
+Luego ve a **Web** > **Reload**
+
+## IMPORTANTE
+- Reemplaza `tu-usuario` por tu nombre de usuario de PythonAnywhere en TODOS los pasos
+- La cuenta gratuita NO se duerme
+- Si algo falla, revisa el **Error log** en la seccion Web
