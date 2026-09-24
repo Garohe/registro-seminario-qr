@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Asistencia{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Dashboard de Asistencia</h2>
+    <div>
+        <span class="auto-refresh">Auto-refresh 5s</span>
+        <a href="/exportar" class="btn btn-sm btn-primary" style="margin-left:0.5rem;">Exportar Excel</a>
+    </div>
+</div>
+
+<div class="dashboard-stats" id="stats-cards">
+    <div class="stat-card stat-total">
+        <span class="stat-number" id="stat-total">-</span>
+        <span class="stat-label">Total</span>
+    </div>
+    <div class="stat-card stat-presentes">
+        <span class="stat-number" id="stat-presentes">-</span>
+        <span class="stat-label">Presentes</span>
+    </div>
+    <div class="stat-card stat-ausentes">
+        <span class="stat-number" id="stat-ausentes">-</span>
+        <span class="stat-label">Ausentes</span>
+    </div>
+    <div class="stat-card stat-pct">
+        <span class="stat-number" id="stat-pct">-</span>
+        <span class="stat-label">Asistencia</span>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card">
+        <h3>Progreso General</h3>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+        </div>
+        <p class="text-center text-muted" id="progress-text">0 / 0</p>
+    </div>
+
+    <div class="card">
+        <h3>Por Lote</h3>
+        <div id="lotes-container"></div>
+    </div>
+
+    <div class="card">
+        <h3>Registros Recientes</h3>
+        <ul id="ultimos-list" class="historial-list"></ul>
+    </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function actualizarDashboard() {
+    fetch('/api/estadisticas')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('stat-total').textContent = data.total;
+            document.getElementById('stat-presentes').textContent = data.presentes;
+            document.getElementById('stat-ausentes').textContent = data.ausentes;
+            document.getElementById('stat-pct').textContent = data.porcentaje + '%';
+
+            const bar = document.getElementById('progress-bar');
+            bar.style.width = data.porcentaje + '%';
+            document.getElementById('progress-text').textContent = data.presentes + ' / ' + data.total;
+
+            const lotesDiv = document.getElementById('lotes-container');
+            lotesDiv.innerHTML = '';
+            data.por_lote.forEach(l => {
+                const pct = l.total > 0 ? Math.round(l.presentes / l.total * 100) : 0;
+                lotesDiv.innerHTML += `
+                    <div class="lote-row">
+                        <div class="lote-info">
+                            <strong>${l.lote}</strong>
+                            <span>${l.presentes} / ${l.total}</span>
+                        </div>
+                        <div class="progress-bar-container progress-sm">
+                            <div class="progress-bar" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            const ultimosUl = document.getElementById('ultimos-list');
+            ultimosUl.innerHTML = '';
+            if (data.ultimos.length === 0) {
+                ultimosUl.innerHTML = '<li class="text-muted" style="padding:1rem 0;text-align:center;">Sin registros aun</li>';
+            }
+            data.ultimos.forEach(u => {
+                const hora = u.hora_registro ? u.hora_registro.split(' ')[1] : '';
+                ultimosUl.innerHTML += `
+                    <li class="historial-item">
+                        <span class="historial-nombre">${u.nombre}</span>
+                        <span class="historial-meta">${u.lote || ''} ${hora}</span>
+                    </li>
+                `;
+            });
+        });
+}
+
+actualizarDashboard();
+setInterval(actualizarDashboard, 5000);
+</script>
+{% endblock %}

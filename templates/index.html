@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Inicio - Sistema de Registro{% endblock %}
+{% block content %}
+<div class="hero">
+    <h1>Sistema de <span>Registro</span></h1>
+    <p>Seminario 2026 — Control de asistencia con QR</p>
+    <div class="stats-row">
+        <div class="stat-card">
+            <span class="stat-number">{{ total }}</span>
+            <span class="stat-label">Invitados</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ presentes }}</span>
+            <span class="stat-label">Presentes</span>
+        </div>
+    </div>
+    <div class="hero-actions">
+        <a href="/importar" class="btn btn-primary">Importar Lista</a>
+        <a href="/escanear" class="btn btn-success">Escanear QR</a>
+        <a href="/dashboard" class="btn btn-secondary">Ver Dashboard</a>
+        <a href="/exportar" class="btn btn-secondary">Exportar Excel</a>
+    </div>
+</div>
+{% endblock %}

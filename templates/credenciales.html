@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Generar Credenciales{% endblock %}
+{% block content %}
+<h2>Generar Credenciales PDF</h2>
+
+<div class="card">
+    <p>Total de invitados: <strong>{{ total }}</strong></p>
+    <p>Se generarán credenciales tipo gafete con código QR, 2 por página tamaño carta.</p>
+
+    <div class="btn-group">
+        <a href="/credenciales/generar" class="btn btn-primary">Generar TODAS ({{ total }})</a>
+    </div>
+
+    {% if lotes %}
+    <hr>
+    <h3>Generar por lote</h3>
+    <div class="btn-group">
+        {% for l in lotes %}
+        <a href="/credenciales/generar?lote={{ l.lote }}" class="btn btn-secondary">Lote {{ l.lote }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Vista previa del gafete</h3>
+    <div class="badge-preview">
+        <div class="preview-header">SEMINARIO 2026</div>
+        <div class="preview-subheader">CREDENCIAL DE ACCESO</div>
+        <div class="preview-name">Nombre del Invitado</div>
+        <div class="preview-lote"><span class="lote-pill">LOTE A</span></div>
+        <div class="preview-qr">[ QR ]</div>
+        <div class="preview-code">INV-0001</div>
+        <div class="preview-footer">Presente esta credencial en el punto de acceso</div>
+    </div>
+</div>
+{% endblock %}

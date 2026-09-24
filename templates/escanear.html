@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Escanear QR{% endblock %}
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
+{% block content %}
+<h2>Escanear Codigo QR</h2>
+
+<div class="scanner-layout">
+    <div class="card scanner-card">
+        <div id="reader"></div>
+        <div class="scanner-status" id="scanner-status">Apunte la camara al codigo QR</div>
+        <div class="manual-input">
+            <p>O ingrese el codigo manualmente:</p>
+            <form onsubmit="registrarManual(event)">
+                <div class="input-group">
+                    <input type="text" id="codigo-manual" placeholder="INV-0001" class="input">
+                    <button type="submit" class="btn btn-primary">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="resultado" class="card resultado-card" style="display:none;">
+        <div id="resultado-icono"></div>
+        <div id="resultado-nombre"></div>
+        <div id="resultado-mensaje"></div>
+        <div id="resultado-detalle"></div>
+        <div id="resultado-acciones"></div>
+    </div>
+
+    <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+            <h3 style="margin:0;">Registros de esta sesion</h3>
+            <span class="scan-counter" id="scan-counter">0 escaneados</span>
+        </div>
+        <ul id="historial" class="historial-list">
+            <li class="text-muted" style="padding:1rem 0;text-align:center;">Sin registros aun</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='scanner.js') }}"></script>
+{% endblock %}

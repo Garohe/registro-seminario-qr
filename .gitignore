@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+database.db
+credenciales/
+qr_temp/
+*.pdf
+prueba_credencial.pdf
+hola.js

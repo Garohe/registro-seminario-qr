@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Importar Invitados{% endblock %}
+{% block content %}
+<h2>Importar Lista de Invitados</h2>
+<div class="card">
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label>Archivo CSV o Excel (.xlsx)</label>
+            <input type="file" name="archivo" accept=".csv,.xlsx,.xls" required class="file-input">
+            <small>El archivo debe tener una columna llamada "nombre"</small>
+        </div>
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="limpiar" value="1">
+                Limpiar lista existente antes de importar
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary">Importar</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Formato esperado</h3>
+    <table class="table">
+        <thead>
+            <tr><th>nombre</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Juan Pérez García</td></tr>
+            <tr><td>María López Hernández</td></tr>
+            <tr><td>Carlos Ramírez Soto</td></tr>
+        </tbody>
+    </table>
+    <small>Se pueden incluir más columnas, pero "nombre" es la única requerida.</small>
+</div>
+{% endblock %}

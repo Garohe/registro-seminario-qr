@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Lista de Invitados{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Invitados</h2>
+</div>
+
+<div class="card">
+    <form method="GET" class="filter-bar">
+        <input type="text" name="buscar" placeholder="Buscar por nombre..." value="{{ buscar }}" class="input">
+        <select name="lote" class="input">
+            <option value="">Todos los lotes</option>
+            {% for l in lotes %}
+            <option value="{{ l.lote }}" {% if lote_filtro == l.lote %}selected{% endif %}>{{ l.lote }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+        <a href="/invitados" class="btn btn-secondary">Limpiar</a>
+    </form>
+</div>
+
+<div class="card">
+    <p class="text-muted">{{ invitados|length }} invitados encontrados</p>
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Lote</th>
+                    <th>Asistencia</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invitados %}
+                <tr>
+                    <td>{{ inv.id }}</td>
+                    <td><code>{{ inv.codigo }}</code></td>
+                    <td>
+                        <form method="POST" action="/invitados/editar/{{ inv.id }}" class="inline-form" id="form-{{ inv.id }}">
+                            <input type="text" name="nombre" value="{{ inv.nombre }}" class="input input-sm">
+                    </td>
+                    <td>
+                            <input type="text" name="lote" value="{{ inv.lote }}" class="input input-sm input-lote" placeholder="Ej: A">
+                        </form>
+                    </td>
+                    <td>
+                        {% if inv.asistencia %}
+                            <span class="badge badge-success">Presente</span>
+                            <small>{{ inv.hora_registro }}</small>
+                        {% else %}
+                            <span class="badge badge-pending">Pendiente</span>
+                        {% endif %}
+                    </td>
+                    <td class="actions">
+                        <button type="submit" form="form-{{ inv.id }}" class="btn btn-sm btn-primary">Guardar</button>
+                        <form method="POST" action="/invitados/eliminar/{{ inv.id }}" class="inline-form"
+                              onsubmit="return confirm('¿Eliminar a {{ inv.nombre }}?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
